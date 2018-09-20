@@ -43,8 +43,6 @@ public class C64 {
 		if (statsSecs > 0)
 			new Thread() {
 				public void run() {
-					th2 = Thread.currentThread().getId();
-					System.out.println("thread: " + th2);
 					while (true) {
 						long t = System.currentTimeMillis() - crono;
 						try {
@@ -77,7 +75,6 @@ public class C64 {
 					numLoops++;
 				}
 			}
-
 			min = Math.min(min, sq.getVal());
 			nb.setVal(0);
 		}
@@ -93,7 +90,7 @@ public class C64 {
 				sequence[sq.getVal()] = sq;
 				maxPos = Math.max(maxPos, sq.getVal());
 			}
-		System.out.println("maxPos: " + maxPos);
+		//System.out.println("maxPos: " + maxPos);
 
 		for (int i = Math.min(35, maxPos) - 1; i > 0; i--)
 			progress[i] = sequence[i].getPartialProgress() + progress[i + 1] / sequence[i].getNumFreeNeighbors();
@@ -132,10 +129,12 @@ public class C64 {
 
 			System.out.println();
 		}
+		/*
 		int[] encoding = encodeBoard();
 		for (int i = 1; i < encoding.length; i++)
 			System.out.print(encoding[i]);
 		System.out.println();
+		*/
 	}
 
 	private String millisToTime(long t) {

@@ -7,6 +7,7 @@ import com.sun.management.ThreadMXBean;
 public class Extract {
 
     public static void main(String[] args) {
+
         try {
             for (Scanner sc = new Scanner(new File(args[0])); sc.hasNext();) {
                 String line = sc.nextLine();
