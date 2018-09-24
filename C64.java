@@ -37,7 +37,7 @@ public class C64 {
 
 	public void run() {
 		th1 = Thread.currentThread().getId();
-		System.out.println("thread: " + th1);
+		// System.out.println("thread: " + th1);
 
 		crono = System.currentTimeMillis();
 		if (statsSecs > 0)
@@ -82,7 +82,7 @@ public class C64 {
 
 	public synchronized double[] getProgress() {
 		Square[] sequence = new Square[65];
-		double[] progress = new double[64];
+		double[] progress = new double[128];
 
 		int maxPos = 0;
 		for (Square[] row : board)
@@ -90,28 +90,32 @@ public class C64 {
 				sequence[sq.getVal()] = sq;
 				maxPos = Math.max(maxPos, sq.getVal());
 			}
-		//System.out.println("maxPos: " + maxPos);
+		// System.out.println("maxPos: " + maxPos);
 
-		for (int i = Math.min(35, maxPos) - 1; i > 0; i--)
-			progress[i] = sequence[i].getPartialProgress() + progress[i + 1] / sequence[i].getNumFreeNeighbors();
+		for (int i = Math.min(40, maxPos) - 1; i > 0; i--) {
+
+			progress[2 * i] = sequence[i].getPartialProgress()
+					+ progress[2 * (i + 1)] / sequence[i].getNumFreeNeighbors();
+			progress[2 * i + 1] = sequence[i].getNumFreeNeighbors();
+		}
 		return progress;
 	}
 
 	private synchronized void showStats() {
-		double[] progress = getProgress();
+		double[] p = getProgress();
 
 		System.out.println(" * stats " + millisToTime(System.currentTimeMillis() - crono) + " *");
 		java.lang.management.ThreadMXBean mx = java.lang.management.ManagementFactory.getThreadMXBean();
-		System.out.println(mx.getThreadCpuTime(th1) / 1000000. + "," + mx.getThreadUserTime(th1) / 1000000.);
-		System.out.println(mx.getThreadCpuTime(th2) / 1000000. + "," + mx.getThreadUserTime(th2) / 1000000.);
-		System.out.println("loop: solution "
-				+ (lastLoopSolution == 0 ? "not found" : lastLoopSolution + " | " + numLoops + " encontrados"));
+		System.out.println("cpu/user time: " + millisToTime(mx.getThreadCpuTime(th1) / 1000000) + ","
+				+ millisToTime(mx.getThreadUserTime(th1) / 1000000));
+		System.out.println("last loop: "
+				+ (lastLoopSolution == 0 ? "not yet found" : lastLoopSolution + " | " + numLoops + " loops found"));
 
 		int i = 1;
-		while (i < 35 && progress[i] < .000001)
+		while (i < 35 && p[i] < .000001)
 			i++;
 		while (i <= 30) {
-			System.out.println(String.format(" * %2d: %.6f", i, progress[i]));
+			System.out.println(String.format("* %2d: " + (p[2 * i] > 0.000005 ? "%.5f" : "%4.1e"), i, p[2 * i]));
 			i++;
 		}
 		System.out.println(" * * * * * * * * * * * *");
@@ -130,11 +134,9 @@ public class C64 {
 			System.out.println();
 		}
 		/*
-		int[] encoding = encodeBoard();
-		for (int i = 1; i < encoding.length; i++)
-			System.out.print(encoding[i]);
-		System.out.println();
-		*/
+		 * int[] encoding = encodeBoard(); for (int i = 1; i < encoding.length; i++)
+		 * System.out.print(encoding[i]); System.out.println();
+		 */
 	}
 
 	private String millisToTime(long t) {
@@ -158,7 +160,7 @@ public class C64 {
 				if (sq.getVal() != 64)
 					x += Math.log(sq.getNumFreeNeighbors());
 			}
-		System.out.println(x/Math.log(2));
+		System.out.println(x / Math.log(2));
 
 		return jumpSequence;
 	}

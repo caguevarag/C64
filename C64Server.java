@@ -25,8 +25,9 @@ public class C64Server {
         int port = Integer.parseInt(a[0]);
         int i = Integer.parseInt(a[1]);
         int j = Integer.parseInt(a[2]);
+        int tStats = Integer.parseInt(a[3]);
 
-        model = new C64(i, j, 0);
+        model = new C64(i, j, tStats);
         new Thread() {
             public void run() {
                 model.run();
@@ -83,30 +84,41 @@ public class C64Server {
 
                     switch (input) {
                     case "end":
-                        serverRunning = false;
+                    case ".":
+                        // serverRunning = false;
+                        out.println("< not yet implemented >");
                         break;
                     case "getProgress":
+                    case "gp":
                         double[] p = model.getProgress();
-                        String s = "progress: ";
-                        for (int i = 0; i < 64; i++)
-                            s += p[i] + ",";
-                        out.println(s);
+                        String s = "";
+                        for (int i = 1; i < 40; i++)
+                            s += String.format("%2d," + (p[2 * i] > 0.000005 ? "%.5f" : "%4.1e") + ",%2d|", i, p[2 * i],
+                                    (int) p[2 * i + 1]);
+                        out.println(s.substring(0, s.length() - 1));
                         break;
                     case "getLastBoard":
+                    case "glb":
                         out.println("< not yet implemented >");
                         break;
                     case "getLastLoop":
+                    case "gll":
                         out.println("lastLoop: " + model.lastLoopSolution);
                         break;
                     case "getNumSolutions":
+                    case "gns":
                         out.println("number of solutions found: " + model.numSols);
                         break;
                     case "getNumLoops":
+                    case "gnl":
                         out.println("number of loops found: " + model.numLoops);
                         break;
                     case "help":
-                        out.println(
-                                "available commands:\n end\n getLastBoard\n getNumLoops\n getLastLoop\n getNumSolutions\n getProgress");
+                    case "h":
+                        out.println("available commands  | shortcut\n" + "  end               |   .     \n"
+                                + "  getLastBoard      |   glb   \n" + "  getNumLoops       |   gnl   \n"
+                                + "  getLastLoop       |   gll   \n" + "  getNumSolutions   |   gns   \n"
+                                + "  getProgress       |   gp    \n" + "  help              |   h       ");
                         break;
                     case "":
                         break;
@@ -123,7 +135,7 @@ public class C64Server {
                     log("Couldn't close a socket, what's going on?");
                 }
                 log("Connection with client# " + clientNumber + " closed");
-                
+
             }
         }
 

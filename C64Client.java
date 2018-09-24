@@ -7,6 +7,8 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,13 +23,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-/**
- * A simple Swing-based client for the capitalization server. It has a main
- * frame window with a text field for entering strings and a textarea to see the
- * results of capitalizing them.
- */
-public class C64Client extends JFrame {
 
+public class C64Client extends JFrame {
     private static final long serialVersionUID = 1L;
     private BufferedReader in;
     private PrintWriter out;
@@ -35,12 +32,12 @@ public class C64Client extends JFrame {
     private JTextField dataField = new JTextField(40);
     private JTextArea messageArea = new JTextArea(8, 60);
     private Image im;
-    private long frameTimes[] = new long[100];
+    private long frameTimes[] = new long[25];
     private long crono;
     private int timePos = 0;
 
     public void showGraph() {
-        setBounds(150, 100, 1000, 800);
+        setBounds(150, 100, 680, 570);
         im = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_3BYTE_BGR);
         setVisible(true);
         crono = System.currentTimeMillis();
@@ -49,7 +46,7 @@ public class C64Client extends JFrame {
             public void run() {
                 while (true) {
                     try {
-                        Thread.sleep(30);
+                        Thread.sleep(50);
                         repaint();
                     } catch (InterruptedException e) {
                         System.err.println("error");
@@ -70,21 +67,29 @@ public class C64Client extends JFrame {
         g2.setBackground(Color.white);
         g2.clearRect(0, 0, im.getWidth(this), im.getHeight(this));
 
-        Point o = new Point(100, 750);
-        int w = 25;
-        int h = 700;
+        Point o = new Point(20, 550);
+        int w = 20;
+        int h = 500;
 
         double[] progress = getProgress();
         for (int i = 0; i < 32; i++) {
-            int d = (int) (h * progress[i + 1]);
-            int alpha = (int) (256 * (h * progress[i + 1] - d));
+            int d = (int) (h * progress[2 * (i + 1)]);
+            double dd=h * progress[2 * (i + 1)];
+            int alpha = (int) (256 * (h * progress[2 * (i + 1)] - d));
 
-            g2.setColor(new Color(255, 0, 0, alpha));
-            g2.drawLine(o.x + i * w, o.y - d - 1, o.x + i * w + w - 2, o.y - d - 1);
-            g2.setColor(new Color(255, 0, 0));
-            g2.fillRect(o.x + i * w, o.y - d, w - 1, 3);
-            g2.setColor(new Color(255, 0, 0, 255 - alpha));
-            g2.drawLine(o.x + i * w, o.y - d + 3, o.x + i * w + w - 2, o.y - d + 3);
+            g2.setColor(Color.gray);
+            g2.drawLine(o.x + i * w + w / 2 - 1, o.y, o.x + i * w + w / 2 - 1, o.y - h);
+            for (int j = 0; j <= progress[2 * (i + 1) + 1]; j++) {
+                int h2 = (int) (o.y - j * h / progress[2 * (i + 1) + 1]);
+                g2.drawLine(o.x + i * w + w / 2 - 7, h2, o.x + i * w + w / 2 + 5, h2);
+            }
+            //g2.setColor(new Color(255, 0, 0, alpha));
+            //g2.drawLine(o.x + i * w, o.y - d - 1, o.x + i * w + w - 2, o.y - d - 1);
+            g2.setColor(new Color(255, 0, 0,180));
+            g2.fill(new Rectangle2D.Double(o.x + i * w, o.y - dd, w - 1, 5));
+            //g2.fillRect(o.x + i * w, o.y - d, w - 1, 3);
+            //g2.setColor(new Color(255, 0, 0, 255 - alpha));
+            //g2.drawLine(o.x + i * w, o.y - d + 3, o.x + i * w + w - 2, o.y - d + 3);
 
             g2.setColor(Color.BLACK);
             g2.drawString((i + 1) + "", o.x + i * w + 5, o.y + 15);
@@ -98,17 +103,30 @@ public class C64Client extends JFrame {
     }
 
     double[] getProgress() {
-        double[] p = new double[64];
+        double[] p = new double[128];
+        String response = null;
+        int numNuls=0;
 
-        out.println("getProgress");
-        String response;
         try {
-            response = in.readLine();
-            String[] s = response.split("[ ,]");
+            out.println("getProgress");
+            while (response == null) {
+                response = in.readLine();
+                if(response==null){
+                    numNuls++;
+                    System.out.println("nulls: "+numNuls);
+                    Thread.sleep(10);
+                }
+            }
 
-            for (int i = 0; i < 64; i++)
-                p[i] = Double.parseDouble(s[i + 1]);
-        } catch (IOException ex) {
+            String[] s = response.split("[|,]");
+
+            for (int i = 1; i < s.length / 3; i++) {
+                p[2 * i] = Double.parseDouble(s[3 * i - 2]);
+                p[2 * i + 1] = (double) Integer.parseInt(s[3 * i - 1].trim());
+            }
+        } catch (Exception ex) {
+            System.err.println("Exception in getProgress(): ");
+            ex.printStackTrace();
         }
         return p;
     }
@@ -152,8 +170,7 @@ public class C64Client extends JFrame {
     /**
      * Implements the connection logic by prompting the end user for the server's IP
      * address, connecting, setting up streams, and consuming the welcome messages
-     * from the server. The Capitalizer protocol says that the server sends three
-     * lines of text to the client immediately after establishing a connection.
+     * from the server.
      */
     public void connectToServer() throws IOException {
 
