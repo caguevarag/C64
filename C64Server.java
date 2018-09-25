@@ -115,10 +115,10 @@ public class C64Server {
                         break;
                     case "help":
                     case "h":
-                        out.println("available commands  | shortcut\n" + "  end               |   .     \n"
-                                + "  getLastBoard      |   glb   \n" + "  getNumLoops       |   gnl   \n"
-                                + "  getLastLoop       |   gll   \n" + "  getNumSolutions   |   gns   \n"
-                                + "  getProgress       |   gp    \n" + "  help              |   h       ");
+                        out.println("available commands  | shortcut\r" + "  end               |   .     \r"
+                                + "  getLastBoard      |   glb   \r" + "  getNumLoops       |   gnl   \r"
+                                + "  getLastLoop       |   gll   \r" + "  getNumSolutions   |   gns   \r"
+                                + "  getProgress       |   gp    \r" + "  help              |   h       ");
                         break;
                     case "":
                         break;
@@ -135,7 +135,6 @@ public class C64Server {
                     log("Couldn't close a socket, what's going on?");
                 }
                 log("Connection with client# " + clientNumber + " closed");
-
             }
         }
 
