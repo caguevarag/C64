@@ -23,7 +23,7 @@ public class Square {
         val = i;
     }
 
-    public int getActualJump(){
+    public int getActualJump() {
         return neighbor;
     }
 
@@ -31,10 +31,10 @@ public class Square {
         return numFreeNeighbors;
     }
 
-    public boolean checkLoop(){
-        if(this.val==64)
-            for(Square sq:neighbors)
-                if(sq.val == 1)
+    public boolean checkLoop() {
+        if (this.val == 64)
+            for (Square sq : neighbors)
+                if (sq.val == 1)
                     return true;
         return false;
     }
@@ -65,6 +65,10 @@ public class Square {
             return freeNeighbors[neighbor];
 
         return null;
+    }
+
+    public void setNextNeighbor(int n) {
+        neighbor = n-1;
     }
 
     public double getPartialProgress() {

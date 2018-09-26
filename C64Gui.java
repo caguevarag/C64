@@ -14,10 +14,10 @@ public class C64Gui extends JFrame {
     Image im;
 
     public static void main(String[] a) {
-        model = new C64(0, 0, 0);
+        model = new C64(0, 0, 0,System.out,System.out);
 
         new C64Gui();
-        model.run();
+        model.run(0);
     }
 
     public C64Gui() {

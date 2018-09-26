@@ -1,6 +1,9 @@
+import java.io.PrintStream;
+
 import javax.swing.JFrame;
 
-import com.sun.management.ThreadMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 
 public class C64 {
 
@@ -11,21 +14,28 @@ public class C64 {
 	int iIni, jIni;
 	int statsSecs;
 	long lastLoopSolution = 0;
-	int numLoops = 0;
-	long th1, th2;
+	long numLoops = 0;
+	long th1;
+	int[] neighborSequence = null;
+	boolean resuming = false;
+	PrintStream solutionsFile, logFile;
+	long acumCPUTime = 0;
+	ThreadMXBean mx;
 
 	public static void main(String[] a) {
 		int i = Integer.parseInt(a[0]);
 		int j = Integer.parseInt(a[1]);
 		int s = Integer.parseInt(a[2]);
 
-		new C64(i, j, s).run();
+		new C64(i, j, s, System.out, System.out).run(0);
 	}
 
-	public C64(int i, int j, int s) {
+	public C64(int i, int j, int s, PrintStream solutionsFile, PrintStream logFile) {
 		iIni = i;
 		jIni = j;
 		statsSecs = s;
+		this.solutionsFile = solutionsFile;
+		this.logFile = logFile;
 
 		for (int x = 0; x < 64; x++)
 			board[x / 8][x % 8] = new Square(x / 8, x % 8);
@@ -35,21 +45,27 @@ public class C64 {
 		min = minMin = 64;
 	}
 
-	public void run() {
-		th1 = Thread.currentThread().getId();
-		// System.out.println("thread: " + th1);
+	public void setNeighborSequence(int[] s) {
+		neighborSequence = s;
+	}
 
-		crono = System.currentTimeMillis();
+	public void run(long elapsedTime) {
+		th1 = Thread.currentThread().getId();
+		mx = ManagementFactory.getThreadMXBean();
+
+		crono = System.currentTimeMillis()-elapsedTime;
 		if (statsSecs > 0)
 			new Thread() {
 				public void run() {
+					long lastStats = System.currentTimeMillis();
 					while (true) {
-						long t = System.currentTimeMillis() - crono;
-						try {
-							sleep(statsSecs * 1000 - t % 1000);
-						} catch (InterruptedException e) {
-						}
+						while (System.currentTimeMillis() - lastStats < statsSecs * 1000 - 500)
+							try {
+								sleep(1000);
+							} catch (InterruptedException e) {
+							}
 						showStats();
+						lastStats=System.currentTimeMillis();
 					}
 				}
 			}.start();
@@ -62,19 +78,18 @@ public class C64 {
 		sq.setFreeNeighbors();
 		int nextVal = sq.getVal() + 1;
 
+		if (neighborSequence != null)
+			sq.setNextNeighbor(neighborSequence[sq.getVal()]);
+
 		Square nb;
 		while ((nb = sq.nextNeighbor()) != null) {
 			nb.setVal(nextVal);
 			if (nb.getVal() < 64)
 				nextCell(nb);
 			else {
-				showBoard();
-				if (nb.checkLoop()) {
-					// showBoard();
-					lastLoopSolution = numSols;
-					numLoops++;
-				}
+				showBoard(nb);
 			}
+			neighborSequence = null;
 			min = Math.min(min, sq.getVal());
 			nb.setVal(0);
 		}
@@ -90,7 +105,6 @@ public class C64 {
 				sequence[sq.getVal()] = sq;
 				maxPos = Math.max(maxPos, sq.getVal());
 			}
-		// System.out.println("maxPos: " + maxPos);
 
 		for (int i = Math.min(40, maxPos) - 1; i > 0; i--) {
 
@@ -104,39 +118,46 @@ public class C64 {
 	private synchronized void showStats() {
 		double[] p = getProgress();
 
-		System.out.println(" * stats " + millisToTime(System.currentTimeMillis() - crono) + " *");
-		java.lang.management.ThreadMXBean mx = java.lang.management.ManagementFactory.getThreadMXBean();
-		System.out.println("cpu/user time: " + millisToTime(mx.getThreadCpuTime(th1) / 1000000) + ","
-				+ millisToTime(mx.getThreadUserTime(th1) / 1000000));
-		System.out.println("last loop: "
+		logFile.println(" * stats " + millisToTime(System.currentTimeMillis() - crono) + " *");
+		logFile.println("cpu time: " + millisToTime(getCPUTime() / 1000000));
+		logFile.println("last loop: "
 				+ (lastLoopSolution == 0 ? "not yet found" : lastLoopSolution + " | " + numLoops + " loops found"));
 
 		int i = 1;
 		while (i < 35 && p[i] < .000001)
 			i++;
 		while (i <= 30) {
-			System.out.println(String.format("* %2d: " + (p[2 * i] > 0.000005 ? "%.5f" : "%4.1e"), i, p[2 * i]));
+			logFile.println(String.format("* %2d: " + (p[2 * i] > 0.000005 ? "%.5f" : "%4.1e"), i, p[2 * i]));
 			i++;
 		}
-		System.out.println(" * * * * * * * * * * * *");
+		logFile.println(" * * * * * * * * * * * *");
 	}
 
-	private synchronized void showBoard() {
-		System.out.println(
-				++numSols + " min:" + min + "/" + minMin + " " + millisToTime(System.currentTimeMillis() - crono));
+	public long getCPUTime() {
+		return acumCPUTime + mx.getThreadCpuTime(th1);
+	}
+
+	private synchronized void showBoard(Square nb) {
+		boolean loop = nb.checkLoop();
+		solutionsFile.println("solution " + ++numSols + (loop ? " loop" : " no loop") + " min:" + min + "/" + minMin);
+		solutionsFile.println("cpu/elapsed time: " + millisToTime(getCPUTime() / 1000000) + "/"
+				+ millisToTime(System.currentTimeMillis() - crono));
+
+		if (loop) {
+			lastLoopSolution = numSols;
+			numLoops++;
+		}
+
 		minMin = Math.min(min, minMin);
 		min = 64;
 
 		for (Square[] row : board) {
 			for (Square n : row)
-				System.out.print((n.getVal() < 10 ? "  " : " ") + n.getVal());
+				solutionsFile.print((n.getVal() < 10 ? "  " : " ") + n.getVal());
 
-			System.out.println();
+			solutionsFile.println();
 		}
-		/*
-		 * int[] encoding = encodeBoard(); for (int i = 1; i < encoding.length; i++)
-		 * System.out.print(encoding[i]); System.out.println();
-		 */
+		// solutionsFile.println("encoding: " + encodeBoard());
 	}
 
 	private String millisToTime(long t) {
@@ -150,18 +171,21 @@ public class C64 {
 	}
 
 	// the board must be complete
-	public int[] encodeBoard() {
-		int[] jumpSequence = new int[65];
-		double x = 0;
+	public synchronized int[] getNeighborSequence() {
+		int[] neighborSequence = new int[65];
+		// double x = 0;
 
 		for (Square[] row : board)
 			for (Square sq : row) {
-				jumpSequence[sq.getVal()] = sq.getActualJump();
-				if (sq.getVal() != 64)
-					x += Math.log(sq.getNumFreeNeighbors());
+				neighborSequence[sq.getVal()] = sq.getActualJump();
+				// if (sq.getVal() != 64)
+				// x += Math.log(sq.getNumFreeNeighbors());
 			}
-		System.out.println(x / Math.log(2));
-
-		return jumpSequence;
+		// solutionsFile.println(x / Math.log(2));
+		/*
+		 * String encoding = ""; for (int i = 1; i < 64; i++) encoding +=
+		 * neighborSequence[i];
+		 */
+		return neighborSequence;
 	}
 }

@@ -24,6 +24,7 @@ public class C64Client extends JFrame {
     private static final long serialVersionUID = 1L;
     private static BufferedReader in;
     private static PrintWriter out;
+    private Socket socket;
 
     private Image im;
     private long frameTimes[] = new long[25];
@@ -45,8 +46,8 @@ public class C64Client extends JFrame {
                     try {
                         Thread.sleep(50);
                         repaint();
-                    } catch (InterruptedException e) {
-                        System.err.println("error");
+                    } catch (Exception e) {
+                        System.err.println("error in repaint thread");
                     }
                 }
             }
@@ -97,18 +98,15 @@ public class C64Client extends JFrame {
     double[] getProgress() {
         double[] p = new double[128];
         String response = null;
-        int numNuls = 0;
 
         try {
-            out.println("getProgress");
             while (response == null) {
+                out.println("getProgress");
                 response = in.readLine();
-                if (response == null) {
-                    numNuls++;
-                    System.out.println("nulls: " + numNuls);
-                    Thread.sleep(10);
-                }
+                if (response == null)
+                    connectToServer();
             }
+
             String[] s = response.split("[|,]");
 
             for (int i = 1; i < s.length / 3; i++) {
@@ -133,7 +131,7 @@ public class C64Client extends JFrame {
             host = s[0];
             port = Integer.parseInt(s[1]);
         }
-        Socket socket = new Socket(host, port);
+        socket = new Socket(host, port);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
@@ -153,16 +151,18 @@ public class C64Client extends JFrame {
 
         Scanner userInput = new Scanner(System.in);
 
-        System.out.print(" >> ");
-
-        boolean running=true;
+        boolean running = true;
         while (running) {
-            out.println(userInput.next());
+            String input = userInput.next();
+            if (input.equals("exit") || input.equals("x"))
+                running = false;
+            else {
+                out.println(input);
 
-            System.out.println(in.readLine());
-            while (in.ready())
                 System.out.println(in.readLine());
-            System.out.print(" >> ");
+                while (in.ready())
+                    System.out.println(in.readLine());
+            }
         }
         userInput.close();
     }
